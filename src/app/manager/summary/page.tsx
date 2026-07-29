@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { gbp, driverCut } from "@/lib/utils";
+import { PrintButton } from "@/components/PrintButton";
+import Link from "next/link";
 
 const isISODate = (s?: string): s is string =>
   !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
@@ -226,6 +228,16 @@ export default async function MonthlySummary({
           (expenses separate)
         </p>
       </section>
+
+      <div className="flex gap-2 print:hidden">
+        <Link
+          href={`/manager/summary?from=2026-01-01&to=${iso(new Date())}`}
+          className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white"
+        >
+          All earnings to date
+        </Link>
+        <PrintButton />
+      </div>
 
       <section className="overflow-x-auto rounded-2xl bg-white p-2 shadow-sm">
         <table className="w-full border-collapse text-sm">
