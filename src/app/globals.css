@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+}
+
+/* ---------------- Intro splash animation ---------------- */
+
+/* The whole splash lifts away like a curtain near the end. */
+.intro-root {
+  animation: intro-curtain 0.75s cubic-bezier(0.76, 0, 0.24, 1) 2.4s forwards;
+}
+
+/* The icon fades + scales in with a soft settle. */
+.intro-logo {
+  animation: intro-logo-in 1.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* The loading bar grows in step with the car that pulls it. */
+.intro-fill {
+  animation: intro-fill 1.95s cubic-bezier(0.45, 0.05, 0.35, 1) 0.3s both;
+}
+
+/* The taxi drives left → right (and bobs), pulling the bar. */
+.intro-car {
+  animation: intro-drive 1.95s cubic-bezier(0.45, 0.05, 0.35, 1) 0.3s both,
+    intro-bob 0.4s ease-in-out 0.3s infinite;
+}
+
+/* A soft glow breathing behind the icon. */
+.intro-glow {
+  animation: intro-glow 2.2s ease-in-out infinite;
+}
+
+@keyframes intro-logo-in {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.8);
+    filter: blur(6px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes intro-fill {
+  from {
+    width: 0;
+  }
+  to {
+    width: calc(100% - 1.6rem);
+  }
+}
+
+/* `left` drives the car across; transform handles facing + bob. */
+@keyframes intro-drive {
+  from {
+    left: 0;
+  }
+  to {
+    left: calc(100% - 2rem);
+  }
+}
+
+@keyframes intro-bob {
+  0%,
+  100% {
+    transform: translateY(-50%) scaleX(-1);
+  }
+  50% {
+    transform: translateY(-64%) scaleX(-1);
+  }
+}
+
+@keyframes intro-glow {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes intro-curtain {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-110%);
+  }
+}
+
+/* Respect users who prefer no motion — show then quietly leave. */
+@media (prefers-reduced-motion: reduce) {
+  .intro-root {
+    animation: intro-curtain 0.4s ease 1.4s forwards;
+  }
+  .intro-logo,
+  .intro-fill,
+  .intro-car,
+  .intro-glow {
+    animation: none;
+  }
+}
