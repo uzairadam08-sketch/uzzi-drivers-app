@@ -151,12 +151,12 @@ export default async function MonthlySummary({
 
   const rows = (drivers ?? []).map((d) => {
     const days = daysByUser.get(d.id) ?? 0;
-    const earnings = days * rate;
+    const adj = adjByUser.get(d.id) ?? 0;
+    const earnings = days * rate + adj;
     const exp = expByUser.get(d.id) ?? 0;
     const j = jobsByUser.get(d.id) ?? { count: 0, pay: 0 };
-    const adj = adjByUser.get(d.id) ?? 0;
-    const total = earnings + j.pay + adj;
-    return { d, days, earnings, exp, jobCount: j.count, jobPay: j.pay, adj, total };
+    const total = earnings + j.pay;
+    return { d, days, earnings, exp, jobCount: j.count, jobPay: j.pay, total };
   });
 
   const totDays = rows.reduce((s, r) => s + r.days, 0);
@@ -164,7 +164,6 @@ export default async function MonthlySummary({
   const totExp = rows.reduce((s, r) => s + r.exp, 0);
   const totJobCount = rows.reduce((s, r) => s + r.jobCount, 0);
   const totJobPay = rows.reduce((s, r) => s + r.jobPay, 0);
-  const totAdj = rows.reduce((s, r) => s + r.adj, 0);
   const totTotal = rows.reduce((s, r) => s + r.total, 0);
 
   return (
@@ -238,12 +237,11 @@ export default async function MonthlySummary({
               <th className="px-2 py-2 text-right">Expenses</th>
               <th className="px-2 py-2 text-right">Jobs</th>
               <th className="px-2 py-2 text-right">Job pay</th>
-              <th className="px-2 py-2 text-right">Adj</th>
               <th className="px-2 py-2 text-right">Total</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ d, days, earnings, exp, jobCount, jobPay, adj, total }) => (
+            {rows.map(({ d, days, earnings, exp, jobCount, jobPay, total }) => (
               <tr key={d.id} className="border-t border-slate-100">
                 <td className="px-2 py-2">
                   <span className="font-medium text-slate-800">
@@ -263,9 +261,6 @@ export default async function MonthlySummary({
                 <td className="px-2 py-2 text-right tabular-nums">
                   {jobPay ? gbp(jobPay) : "—"}
                 </td>
-                <td className="px-2 py-2 text-right tabular-nums">
-                  {adj ? gbp(adj) : "—"}
-                </td>
                 <td className="px-2 py-2 text-right font-semibold tabular-nums text-navy">
                   {gbp(total)}
                 </td>
@@ -274,7 +269,7 @@ export default async function MonthlySummary({
             {rows.length === 0 && (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={7}
                   className="px-2 py-6 text-center text-slate-400"
                 >
                   No drivers yet.
@@ -297,9 +292,6 @@ export default async function MonthlySummary({
               </td>
               <td className="px-2 py-2 text-right tabular-nums">
                 {gbp(totJobPay)}
-              </td>
-              <td className="px-2 py-2 text-right tabular-nums">
-                {gbp(totAdj)}
               </td>
               <td className="px-2 py-2 text-right tabular-nums">
                 {gbp(totTotal)}
