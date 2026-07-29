@@ -85,12 +85,15 @@ export default async function MonthlySummary({
   const { start, end, monthValue, fromValue, toValue, label } =
     resolveBounds(searchParams);
 
+  const monthStart = start.slice(0, 7) + "-01";
+
   const [
     { data: drivers },
     { data: clockins },
     { data: expenses },
     { data: jobs },
     { data: settings },
+    { data: adjustments },
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -113,6 +116,10 @@ export default async function MonthlySummary({
       .gte("job_date", start)
       .lte("job_date", end),
     supabase.from("settings").select("daily_rate").single(),
+    supabase
+      .from("adjustments")
+      .select("user_id, amount, note")
+      .eq("month", monthStart),
   ]);
 
   const rate = Number(settings?.daily_rate ?? 100);
@@ -138,15 +145,18 @@ export default async function MonthlySummary({
     jobsByUser.set(j.user_id, cur);
   }
 
+  const adjByUser = new Map<string, number>();
+  for (const a of adjustments ?? [])
+    adjByUser.set(a.user_id, (adjByUser.get(a.user_id) ?? 0) + Number(a.amount));
+
   const rows = (drivers ?? []).map((d) => {
     const days = daysByUser.get(d.id) ?? 0;
     const earnings = days * rate;
     const exp = expByUser.get(d.id) ?? 0;
     const j = jobsByUser.get(d.id) ?? { count: 0, pay: 0 };
-    // Wages owed = day earnings (days × rate) + their 70% car-job pay.
-    // Expenses are tracked separately, not part of pay.
-    const total = earnings + j.pay;
-    return { d, days, earnings, exp, jobCount: j.count, jobPay: j.pay, total };
+    const adj = adjByUser.get(d.id) ?? 0;
+    const total = earnings + j.pay + adj;
+    return { d, days, earnings, exp, jobCount: j.count, jobPay: j.pay, adj, total };
   });
 
   const totDays = rows.reduce((s, r) => s + r.days, 0);
@@ -154,6 +164,7 @@ export default async function MonthlySummary({
   const totExp = rows.reduce((s, r) => s + r.exp, 0);
   const totJobCount = rows.reduce((s, r) => s + r.jobCount, 0);
   const totJobPay = rows.reduce((s, r) => s + r.jobPay, 0);
+  const totAdj = rows.reduce((s, r) => s + r.adj, 0);
   const totTotal = rows.reduce((s, r) => s + r.total, 0);
 
   return (
@@ -227,6 +238,7 @@ export default async function MonthlySummary({
               <th className="px-2 py-2 text-right">Expenses</th>
               <th className="px-2 py-2 text-right">Jobs</th>
               <th className="px-2 py-2 text-right">Job pay</th>
+              <th className="px-2 py-2 text-right">Adj</th>
               <th className="px-2 py-2 text-right">Total</th>
             </tr>
           </thead>
@@ -251,6 +263,9 @@ export default async function MonthlySummary({
                 <td className="px-2 py-2 text-right tabular-nums">
                   {jobPay ? gbp(jobPay) : "—"}
                 </td>
+                <td className="px-2 py-2 text-right tabular-nums">
+                  {adj ? gbp(adj) : "—"}
+                </td>
                 <td className="px-2 py-2 text-right font-semibold tabular-nums text-navy">
                   {gbp(total)}
                 </td>
@@ -259,7 +274,7 @@ export default async function MonthlySummary({
             {rows.length === 0 && (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="px-2 py-6 text-center text-slate-400"
                 >
                   No drivers yet.
@@ -282,6 +297,9 @@ export default async function MonthlySummary({
               </td>
               <td className="px-2 py-2 text-right tabular-nums">
                 {gbp(totJobPay)}
+              </td>
+              <td className="px-2 py-2 text-right tabular-nums">
+                {gbp(totAdj)}
               </td>
               <td className="px-2 py-2 text-right tabular-nums">
                 {gbp(totTotal)}
