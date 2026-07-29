@@ -243,7 +243,7 @@ export default async function MonthlySummary({
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ d, days, earnings, exp, jobCount, jobPay, total }) => (
+            {rows.map(({ d, days, earnings, exp, jobCount, jobPay, adj, total }) => (
               <tr key={d.id} className="border-t border-slate-100">
                 <td className="px-2 py-2">
                   <span className="font-medium text-slate-800">
