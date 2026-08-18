@@ -13,11 +13,13 @@ export async function addJob(formData: FormData) {
 
   const description = String(formData.get("description") ?? "").trim();
   const total = Number(formData.get("total"));
+  const expenses = Number(formData.get("expenses") ?? 0);
   if (!Number.isFinite(total) || total <= 0) return;
 
   await supabase.from("jobs").insert({
     user_id: user.id,
     total,
+    expenses: Number.isFinite(expenses) && expenses > 0 ? expenses : 0,
     description: description || null,
     job_date: toISODate(new Date()),
   });

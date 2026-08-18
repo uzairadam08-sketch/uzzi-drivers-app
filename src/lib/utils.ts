@@ -29,10 +29,11 @@ export function monthLabel(ref: Date): string {
   return ref.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 }
 
-// Standby / odd jobs: the driver keeps 70% of the job total.
-export const DRIVER_SHARE = 0.7;
+// Per car jobs: company covers expenses first, then driver takes 60% of the net.
+export const DRIVER_SHARE = 0.6;
 
-// The driver's cut of a job total, rounded to the penny.
-export function driverCut(total: number): number {
-  return Math.round((total ?? 0) * DRIVER_SHARE * 100) / 100;
+// Driver's cut: (total - expenses) * 60%, rounded to the penny.
+export function driverCut(total: number, expenses = 0): number {
+  const net = Math.max(0, (total ?? 0) - (expenses ?? 0));
+  return Math.round(net * DRIVER_SHARE * 100) / 100;
 }

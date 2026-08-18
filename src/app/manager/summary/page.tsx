@@ -114,7 +114,7 @@ export default async function MonthlySummary({
       .lte("expense_date", end),
     supabase
       .from("jobs")
-      .select("user_id, total")
+      .select("user_id, total, expenses")
       .gte("job_date", start)
       .lte("job_date", end),
     supabase.from("settings").select("daily_rate").single(),
@@ -138,12 +138,12 @@ export default async function MonthlySummary({
   for (const e of expenses ?? [])
     expByUser.set(e.user_id, (expByUser.get(e.user_id) ?? 0) + Number(e.amount));
 
-  // Standby jobs: count + the driver's 70% pay, per driver.
+  // Per car jobs: expenses deducted first, driver takes 60% of net.
   const jobsByUser = new Map<string, { count: number; pay: number }>();
   for (const j of jobs ?? []) {
     const cur = jobsByUser.get(j.user_id) ?? { count: 0, pay: 0 };
     cur.count += 1;
-    cur.pay += driverCut(Number(j.total));
+    cur.pay += driverCut(Number(j.total), Number(j.expenses ?? 0));
     jobsByUser.set(j.user_id, cur);
   }
 

@@ -14,7 +14,7 @@ export default async function JobsPage() {
 
   const { data: jobs } = await supabase
     .from("jobs")
-    .select("id, job_date, description, total")
+    .select("id, job_date, description, total, expenses")
     .eq("user_id", user!.id)
     .gte("job_date", start)
     .lte("job_date", end)
@@ -22,7 +22,7 @@ export default async function JobsPage() {
     .order("created_at", { ascending: false });
 
   const rows = jobs ?? [];
-  const totalPay = rows.reduce((s, j) => s + driverCut(Number(j.total)), 0);
+  const totalPay = rows.reduce((s, j) => s + driverCut(Number(j.total), Number(j.expenses ?? 0)), 0);
 
   return (
     <div className="flex flex-col gap-6">
@@ -32,7 +32,7 @@ export default async function JobsPage() {
           Add a standby job
         </h2>
         <p className="mb-3 text-xs text-slate-400">
-          Enter the job total — you get {Math.round(DRIVER_SHARE * 100)}% of it.
+          Enter the job total and any expenses — you get {Math.round(DRIVER_SHARE * 100)}% of the net (total minus expenses).
         </p>
         <JobForm />
       </section>
@@ -57,7 +57,9 @@ export default async function JobsPage() {
         )}
         {rows.map((j) => {
           const total = Number(j.total);
-          const cut = driverCut(total);
+          const expenses = Number(j.expenses ?? 0);
+          const net = Math.max(0, total - expenses);
+          const cut = driverCut(total, expenses);
           return (
             <div
               key={j.id}
@@ -69,6 +71,7 @@ export default async function JobsPage() {
                 </p>
                 <p className="text-xs text-slate-400">
                   {j.job_date} · total {gbp(total)}
+                  {expenses > 0 && ` · exp ${gbp(expenses)} · net ${gbp(net)}`}
                 </p>
               </div>
               <div className="flex items-center gap-3 pl-3">
