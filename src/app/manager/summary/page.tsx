@@ -99,7 +99,7 @@ export default async function MonthlySummary({
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, driver_number, display_name")
+      .select("id, driver_number, display_name, custom_daily_rate")
       .eq("role", "driver")
       .order("driver_number", { ascending: true }),
     supabase
@@ -154,7 +154,8 @@ export default async function MonthlySummary({
   const rows = (drivers ?? []).map((d) => {
     const days = daysByUser.get(d.id) ?? 0;
     const adj = adjByUser.get(d.id) ?? 0;
-    const earnings = days * rate + adj;
+    const driverRate = d.custom_daily_rate ? Number(d.custom_daily_rate) : rate;
+    const earnings = days * driverRate + adj;
     const exp = expByUser.get(d.id) ?? 0;
     const j = jobsByUser.get(d.id) ?? { count: 0, pay: 0 };
     const total = earnings + j.pay;

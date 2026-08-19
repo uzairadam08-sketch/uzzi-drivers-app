@@ -14,7 +14,7 @@ export default async function DriverDashboard() {
   const { start, end } = monthBounds(now);
 
   const [{ data: profile }, { data: monthRows }, { data: settings }] = await Promise.all([
-    supabase.from("profiles").select("daily_rate_enabled").eq("id", user!.id).single(),
+    supabase.from("profiles").select("daily_rate_enabled, custom_daily_rate").eq("id", user!.id).single(),
     supabase
       .from("clockins")
       .select("work_date, half_day")
@@ -29,7 +29,8 @@ export default async function DriverDashboard() {
   const todayRow = monthRows?.find((r) => r.work_date === today);
   const clockedToday = !!todayRow;
   const clockedHalfToday = todayRow?.half_day ?? false;
-  const rate = Number(settings?.daily_rate ?? 100);
+  const globalRate = Number(settings?.daily_rate ?? 100);
+  const rate = profile?.custom_daily_rate ? Number(profile.custom_daily_rate) : globalRate;
   const earnings = days * rate;
 
   return (
