@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { gbp, monthBounds, monthLabel, toISODate } from "@/lib/utils";
+import { gbp, monthBounds, monthLabel, toISODate, RATE_CHANGE_DATE, LEGACY_RATE, driverCut } from "@/lib/utils";
 import { clockIn, clockInHalf, undoClockIn } from "./actions";
 import Link from "next/link";
 
@@ -13,7 +13,9 @@ export default async function DriverDashboard() {
   const today = toISODate(now);
   const { start, end } = monthBounds(now);
 
-  const [{ data: profile }, { data: monthRows }, { data: settings }] = await Promise.all([
+  const monthStart = start.slice(0, 7) + "-01";
+
+  const [{ data: profile }, { data: monthRows }, { data: settings }, { data: adjustments }, { data: jobRows }] = await Promise.all([
     supabase.from("profiles").select("daily_rate_enabled, custom_daily_rate").eq("id", user!.id).single(),
     supabase
       .from("clockins")
@@ -22,6 +24,8 @@ export default async function DriverDashboard() {
       .gte("work_date", start)
       .lte("work_date", end),
     supabase.from("settings").select("daily_rate").single(),
+    supabase.from("adjustments").select("amount").eq("user_id", user!.id).eq("month", monthStart),
+    supabase.from("jobs").select("total, expenses").eq("user_id", user!.id).gte("job_date", start).lte("job_date", end),
   ]);
 
   const dailyRateEnabled = !!profile?.daily_rate_enabled;
@@ -31,7 +35,14 @@ export default async function DriverDashboard() {
   const clockedHalfToday = todayRow?.half_day ?? false;
   const globalRate = Number(settings?.daily_rate ?? 100);
   const rate = profile?.custom_daily_rate ? Number(profile.custom_daily_rate) : globalRate;
-  const earnings = days * rate;
+  const earnings = monthRows?.reduce((sum, r) => {
+    const d = r.half_day ? 0.5 : 1;
+    const dayRate = r.work_date < RATE_CHANGE_DATE ? LEGACY_RATE : rate;
+    return sum + d * dayRate;
+  }, 0) ?? 0;
+  const adj = adjustments?.reduce((s, a) => s + Number(a.amount), 0) ?? 0;
+  const jobPay = jobRows?.reduce((s, j) => s + driverCut(Number(j.total), Number(j.expenses ?? 0)), 0) ?? 0;
+  const totalPay = earnings + jobPay + adj;
 
   return (
     <div className="flex flex-col gap-6">
@@ -52,6 +63,28 @@ export default async function DriverDashboard() {
             >
               Go to Per Car Jobs
             </Link>
+            <div className="mt-4 w-full border-t border-slate-100 pt-4 text-left">
+              <p className="text-xs uppercase tracking-wide text-slate-400 mb-2">{monthLabel(now)} earnings</p>
+              <p className="text-2xl font-bold text-navy">{gbp(totalPay)}</p>
+              {totalPay > 0 ? (
+                <div className="mt-2 flex flex-col gap-1 text-sm text-slate-500">
+                  {jobPay > 0 && (
+                    <div className="flex justify-between">
+                      <span>Per car jobs</span>
+                      <span className="tabular-nums font-medium text-slate-700">{gbp(jobPay)}</span>
+                    </div>
+                  )}
+                  {adj !== 0 && (
+                    <div className="flex justify-between">
+                      <span>Adjustments</span>
+                      <span className="tabular-nums font-medium text-slate-700">{gbp(adj)}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-1 text-sm text-slate-400">Nothing logged yet this month.</p>
+              )}
+            </div>
           </div>
         ) : clockedToday ? (
           <div className="flex flex-col items-center gap-4 text-center">
@@ -120,6 +153,8 @@ export default async function DriverDashboard() {
           </div>
         </section>
       )}
+
+
     </div>
   );
 }
