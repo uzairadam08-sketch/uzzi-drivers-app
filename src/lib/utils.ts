@@ -29,6 +29,10 @@ export function monthLabel(ref: Date): string {
   return ref.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 }
 
+// Daily rate changed from £100 to £120 on this date. Days before this use LEGACY_RATE.
+export const RATE_CHANGE_DATE = "2026-08-19";
+export const LEGACY_RATE = 100;
+
 // Per car jobs: company covers expenses first, then driver takes 60% of the net.
 export const DRIVER_SHARE = 0.6;
 

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { gbp, driverCut } from "@/lib/utils";
+import { gbp, driverCut, RATE_CHANGE_DATE, LEGACY_RATE } from "@/lib/utils";
 import { PrintButton } from "@/components/PrintButton";
 import Link from "next/link";
 
@@ -104,7 +104,7 @@ export default async function MonthlySummary({
       .order("driver_number", { ascending: true }),
     supabase
       .from("clockins")
-      .select("user_id, half_day")
+      .select("user_id, half_day, work_date")
       .gte("work_date", start)
       .lte("work_date", end),
     supabase
@@ -126,13 +126,17 @@ export default async function MonthlySummary({
 
   const rate = Number(settings?.daily_rate ?? 100);
 
-  // A full day counts as 1, a half day as 0.5 (paid half the rate).
-  const daysByUser = new Map<string, number>();
-  for (const c of clockins ?? [])
-    daysByUser.set(
-      c.user_id,
-      (daysByUser.get(c.user_id) ?? 0) + (c.half_day ? 0.5 : 1)
-    );
+  // Split days into pre/post rate change so historical days stay at the old rate.
+  const daysOldByUser = new Map<string, number>(); // work_date < RATE_CHANGE_DATE → LEGACY_RATE
+  const daysNewByUser = new Map<string, number>(); // work_date >= RATE_CHANGE_DATE → current rate
+  for (const c of clockins ?? []) {
+    const d = c.half_day ? 0.5 : 1;
+    if (c.work_date < RATE_CHANGE_DATE) {
+      daysOldByUser.set(c.user_id, (daysOldByUser.get(c.user_id) ?? 0) + d);
+    } else {
+      daysNewByUser.set(c.user_id, (daysNewByUser.get(c.user_id) ?? 0) + d);
+    }
+  }
 
   const expByUser = new Map<string, number>();
   for (const e of expenses ?? [])
@@ -152,10 +156,12 @@ export default async function MonthlySummary({
     adjByUser.set(a.user_id, (adjByUser.get(a.user_id) ?? 0) + Number(a.amount));
 
   const rows = (drivers ?? []).map((d) => {
-    const days = daysByUser.get(d.id) ?? 0;
+    const daysOld = daysOldByUser.get(d.id) ?? 0;
+    const daysNew = daysNewByUser.get(d.id) ?? 0;
+    const days = daysOld + daysNew;
     const adj = adjByUser.get(d.id) ?? 0;
     const driverRate = d.custom_daily_rate ? Number(d.custom_daily_rate) : rate;
-    const earnings = days * driverRate + adj;
+    const earnings = daysOld * LEGACY_RATE + daysNew * driverRate + adj;
     const exp = expByUser.get(d.id) ?? 0;
     const j = jobsByUser.get(d.id) ?? { count: 0, pay: 0 };
     const total = earnings + j.pay;
